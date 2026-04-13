@@ -17,8 +17,9 @@ def load_config():
     
     config = {
         "api_key": api_key,
+        "scraper_api_key": os.getenv("SCRAPER_API_KEY"),
         "base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-        "model": os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
+        "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         "max_tokens_per_chunk": int(os.getenv("MAX_TOKENS_PER_CHUNK", 1000)),
         "request_delay": float(os.getenv("REQUEST_DELAY_SECONDS", 2.0)),
         "max_retries": int(os.getenv("MAX_RETRIES", 3))

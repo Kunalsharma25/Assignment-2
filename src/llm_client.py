@@ -114,3 +114,51 @@ class LLMClient:
                 "sentiment": most_common_sentiment,
                 "summary": combined_summaries[:500] + "..." if len(combined_summaries) > 500 else combined_summaries
             }
+
+    def generate_final_verdict(self, reviews: List[object]) -> Dict[str, str]:
+        """Generates a final overall product verdict based on all analyzed reviews."""
+        if not reviews:
+            return {"overall_sentiment": "Unknown", "verdict": "No reviews to analyze.", "recommendation": "Unknown"}
+        
+        # Compile all review data
+        review_summaries = []
+        recommendations = []
+        for review in reviews:
+            rec = getattr(review, 'recommended', 'Unknown')
+            reason = getattr(review, 'recommendation_reason', '')
+            if rec and rec != "Unknown":
+                recommendations.append(f"- {rec}: {reason}")
+            if hasattr(review, 'summary') and review.summary:
+                review_summaries.append(review.summary)
+        
+        summaries_text = "\n".join(review_summaries)
+        recommendations_text = "\n".join(recommendations) if recommendations else "No individual recommendations available."
+        
+        final_verdict_prompt = (
+            f"Based on the following {len(reviews)} review summaries and individual recommendations, "
+            f"provide a final overall product verdict including: (1) overall product quality assessment, "
+            f"(2) key strengths, (3) key weaknesses, and (4) final recommendation (Yes/No) for potential buyers. "
+            f"Respond ONLY with a valid JSON object with these exact keys: 'overall_sentiment', 'strengths', 'weaknesses', 'verdict', 'recommendation'. "
+            f"\n\nReview Summaries:\n{summaries_text}\n\nIndividual Recommendations:\n{recommendations_text}"
+        )
+        
+        try:
+            raw_response = self._call_api(final_verdict_prompt)
+            result = self._parse_llm_response(raw_response)
+            # Ensure all keys exist
+            return {
+                "overall_sentiment": result.get("overall_sentiment", "Unknown"),
+                "strengths": result.get("strengths", "Not determined"),
+                "weaknesses": result.get("weaknesses", "Not determined"),
+                "verdict": result.get("verdict", "Analysis complete."),
+                "recommendation": result.get("recommendation", "Unknown")
+            }
+        except Exception as e:
+            logger.error(f"Failed to generate final verdict: {e}")
+            return {
+                "overall_sentiment": "Unknown",
+                "strengths": "Failed to generate verdict",
+                "weaknesses": "Failed to generate verdict",
+                "verdict": f"Error generating final verdict: {str(e)}",
+                "recommendation": "Unknown"
+            }

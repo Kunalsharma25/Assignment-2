@@ -1,11 +1,11 @@
 # AI Engineer Intern — Assignment 2: Review Analyzer
 
-A Python-based application that scrapes product reviews from Best Buy, cleans and chunks them for LLM processing, and generates sentiment/summary analysis using an OpenAI-compatible API.
+A Python-based application that scrapes product reviews from Flipkart, cleans and chunks them for LLM processing, and generates sentiment/summary analysis using an OpenAI-compatible API.
 
 ## Chosen Product URL
-- **Product:** Apple Watch Ultra 2 (2024)
-- **URL:** [Best Buy Product Page](https://www.bestbuy.com/product/apple-watch-ultra-2-gps-cellular-49mm-titanium-case-with-black-ocean-band-black-2024/JJGCQ3FLGQ)
-- **Why:** This is a premium, high-volume product with diverse and detailed customer reviews, perfect for testing sentiment analysis and summarization.
+- **Product:** HP 320 5MP HD Webcam
+- **URL:** [Flipkart Product Page](https://www.flipkart.com/hp-320-5-mp-hd-webcam-usb-connectivity/p/itm00644a314bab0?pid=ACCH28H2F69RKYQZ)
+- **Why:** High-volume consumer electronics with diverse customer reviews, ideal for testing sentiment analysis and summarization.
 
 ## Setup Instructions
 
@@ -26,15 +26,15 @@ A Python-based application that scrapes product reviews from Best Buy, cleans an
 Execute the pipeline using `main.py`:
 
 ```bash
-python main.py --url "https://www.bestbuy.com/product/apple-watch-ultra-2-gps-cellular-49mm-titanium-case-with-black-ocean-band-black-2024/JJGCQ3FLGQ" --max-pages 2
+python main.py --url "https://www.flipkart.com/hp-320-5-mp-hd-webcam-usb-connectivity/p/itm00644a314bab0?pid=ACCH28H2F69RKYQZ" --max-reviews 10
 ```
 
 ### CLI Arguments
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--url` | (Required) | The Best Buy product or reviews URL. |
-| `--max-pages` | `3` | Maximum number of review pages to scrape. |
+| `--url` | (Required) | The Flipkart product URL. |
+| `--max-reviews` | `10` | Maximum number of reviews to scrape. |
 | `--output-dir` | `output` | Directory for output CSV/JSON files. |
 | `--log-level` | `INFO` | Verbosity (DEBUG, INFO, WARNING, ERROR). |
 
@@ -56,6 +56,6 @@ After a successful run, the following files will be created in the `output/` dir
 
 ## Limitations
 
-- **Bot Detection**: Retail sites like Best Buy aggressively block automated scrapers. If the site layout changes, CSS selectors may need updates.
+- **Bot Detection**: Retail sites like Flipkart aggressively block automated scrapers. ScraperAPI proxy helps, but CSS selectors may need updates if site layout changes.
 - **Review Content**: Currently focuses on text-based reviews. media/images and Q&A sections are excluded.
 - **API Costs**: Each review analyzed incurs token costs from your LLM provider.
