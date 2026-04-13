@@ -1,3 +1,7 @@
+"""
+Module for scraping product reviews from Flipkart using ScraperAPI and BeautifulSoup.
+Provides the Review dataclass and the FlipkartScraper class.
+"""
 import requests
 import random
 import time
@@ -14,21 +18,32 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Review:
-    author: str
-    rating: Optional[float]
-    date: str
-    title: str
-    body: str
-    verified: bool
-    url: str
-    summary: str = ""
-    sentiment: str = ""
+    """
+    Represents a single scraped review.
+    
+    Attributes:
+        author (str): The name of the review author.
+        rating (float): The star rating given by the user (usually 1.0 to 5.0).
+        date (str): The formatted date of the review (YYYY-MM-DD).
+        title (str): Short summary/title of the review.
+        body (str): The full text of the review.
+        verified (bool): Whether the purchase was verified by the platform.
+        url (str): The URL where the review was found.
+        summary (str): LLM-generated summary of the review.
+        sentiment (str): LLM-generated sentiment (Positive/Negative/Neutral).
+    """
 
 class FlipkartScraper:
-    def __init__(self, api_key: Optional[str] = None, delay: float = 1.0):
+    def __init__(self, api_key: Optional[str] = None, delay: float = 2.0):
         self.api_key = api_key
         self.delay = delay
         self.session = requests.Session()
+        self.user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0"
+        ]
 
     def _parse_date(self, date_str: str) -> str:
         """Converts Flipkart relative dates (e.g., '2 months ago') to YYYY-MM-DD."""
@@ -79,9 +94,11 @@ class FlipkartScraper:
         
         proxy_url = "https://api.scraperapi.com/?" + urlencode(params)
         
+        headers = {'User-Agent': random.choice(self.user_agents)}
+        
         for attempt in range(3):
             try:
-                response = self.session.get(proxy_url, timeout=90)
+                response = self.session.get(proxy_url, headers=headers, timeout=90)
                 response.raise_for_status()
                 return BeautifulSoup(response.content, "lxml")
             except Exception as e:

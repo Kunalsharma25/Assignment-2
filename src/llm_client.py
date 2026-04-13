@@ -1,3 +1,7 @@
+"""
+Module for interacting with OpenAI-compatible APIs (OpenAI, Groq, Ollama).
+Includes the LLMClient class for sentiment analysis, summarization, and verdict generation.
+"""
 import json
 import logging
 import time
@@ -8,6 +12,12 @@ from openai import OpenAI, RateLimitError, APIStatusError, APIConnectionError
 logger = logging.getLogger(__name__)
 
 class LLMClient:
+    """
+    A client for interfacing with OpenAI-compatible LLMs.
+    
+    Provides methods for analyzing individual review chunks and consolidating findings
+    into a final product verdict. Implements exponential backoff for robust API interaction.
+    """
     def __init__(self, api_key: str, base_url: str, model: str, max_retries: int = 3, initial_backoff: float = 2.0):
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model

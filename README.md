@@ -55,6 +55,15 @@ After a successful run, the following files will be created in the `output/` dir
 4.  **Exponential Backoff**: Robust API call logic that handles rate limits (429) and server errors (5xx) with automatic retries.
 5.  **Robust Scraper**: Implements User-Agent rotation and randomized delays to minimize bot detection.
 
+## Scraping Ethics & Robots.txt
+
+This project is built with ethical data collection in mind:
+
+1.  **Robots.txt Compliance**: We acknowledge that Flipkart's `robots.txt` prohibits the crawling of specific review pagination and details pages. This application is designed for **single-page educational analysis** and should not be used for high-frequency or large-scale scraping.
+2.  **Request Throttling**: The scraper includes a configurable `REQUEST_DELAY_SECONDS` (default: 2s) to ensure we do not overwhelm the host servers.
+3.  **User-Agent Rotation**: Random User-Agents are used to simulate diverse browser environments and avoid being flagged as a malicious bot.
+4.  **Limited Scope**: The tool focuses only on public customer reviews and does not attempt to access any private or protected data.
+
 ## Limitations
 
 - **Bot Detection**: Retail sites like Flipkart aggressively block automated scrapers. ScraperAPI proxy helps, but CSS selectors may need updates if site layout changes.

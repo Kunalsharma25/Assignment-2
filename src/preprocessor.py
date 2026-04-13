@@ -1,3 +1,7 @@
+"""
+Module for cleaning and chunking review text.
+Uses tiktoken for precise tokenization and overlapping chunk generation.
+"""
 import html
 import re
 import unicodedata
@@ -8,6 +12,13 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 class Preprocessor:
+    """
+    Handles cleaning and token-safe segmentation of raw text.
+    
+    Attributes:
+        max_tokens (int): Maximum tokens per chunk.
+        overlap_tokens (int): Number of overlapping tokens between chunks.
+    """
     def __init__(self, max_tokens: int = 1000, overlap_tokens: int = 50):
         self.max_tokens = max_tokens
         self.overlap_tokens = overlap_tokens
