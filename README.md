@@ -44,6 +44,7 @@ After a successful run, the following files will be created in the `output/` dir
 
 - `processed_reviews.csv`: A structured CSV with columns: `author`, `date`, `rating`, `verified`, `title`, `body`, `sentiment`, `summary`, `url`.
 - `processed_reviews.json`: The same data in JSON format for easy programmatic ingestion.
+- `final_verdict.json`: A high-level LLM-generated analysis of the overall product quality, strengths, and weaknesses.
 - `run.log`: A detailed execution log for troubleshooting and verification.
 
 ## Design Choices

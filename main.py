@@ -1,7 +1,7 @@
-import sys
 import argparse
 import logging
 import os
+import json
 from config import load_config
 from src.scraper import FlipkartScraper
 from src.preprocessor import Preprocessor

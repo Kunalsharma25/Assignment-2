@@ -49,6 +49,18 @@ INFO: ✓ All reviews processed
 ✓ Results saved successfully
   - CSV: output\flipkart_reviews.csv
   - JSON: output\flipkart_reviews.json
+  - Verdict: output\final_verdict.json
+```
+
+### 5b. FINAL VERDICT (4:30-4:45)
+**Show**: The overall product analysis console output
+**Expect**:
+```
+📊 FINAL VERDICT:
+   Overall Sentiment: Positive
+   Strengths: Camera quality, Value...
+   Verdict: Highly recommended for...
+   ✓ RECOMMENDED: YES
 ```
 
 ### 6. RESULTS (4:30-5:00)
