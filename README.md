@@ -1,8 +1,8 @@
-# Flipkart Review Analyzer & Sentiment Engine 🚀
+# Flipkart Review Analyzer & Sentiment Engine
 
 A high-performance Python application designed to scrape, preprocess, and analyze e-commerce product reviews. This system uses a sophisticated **multi-layer heuristic scraper** to bypass dynamic DOM structures and leverages **Groq-powered LLMs** to generate sentimental analysis and final product verdicts.
 
-## ✨ Key Features
+## Key Features
 
 - **Layered Heuristic Scraper**: Robust parsing logic using CSS selectors and a unique **Sequence-Aware Walker** to handle fragmented React layouts.
 - **Bypass Bot Detection**: Integrated with **ScraperAPI** for proxy rotation and automated browser rendering.
@@ -12,7 +12,7 @@ A high-performance Python application designed to scrape, preprocess, and analyz
 
 ---
 
-## 🛠️ Setup Instructions
+## Setup Instructions
 
 ### 1. Environment Configuration
 Clone the repository and install the dependencies:
@@ -36,7 +36,7 @@ REQUEST_DELAY=2.0
 
 ---
 
-## 🚀 Usage
+## Usage
 
 Execute the pipeline for any Flipkart product using the CLI:
 
@@ -53,24 +53,24 @@ python main.py --url "https://www.flipkart.com/hp-320-5-mp-hd-webcam-usb-connect
 
 ---
 
-## 📊 Outputs
+## Outputs
 
 The analyzer produces structured data in the `output/` directory:
 
-- 📄 `flipkart_reviews.csv`: Tabular data with ratings, authors, and sentiment.
-- 📄 `flipkart_reviews.json`: Structured JSON for programmatic use.
-- 📄 `final_verdict.json`: The LLM-generated summary and purchase recommendation.
-- 📄 `run.log`: Detailed execution history for verification.
+- `flipkart_reviews.csv`: Tabular data with ratings, authors, and sentiment.
+- `flipkart_reviews.json`: Structured JSON for programmatic use.
+- `final_verdict.json`: The LLM-generated summary and purchase recommendation.
+- `run.log`: Detailed execution history for verification.
 
 ---
 
-## 🛡️ Scraping Logic & Ethics
+## Scraping Logic & Ethics
 
 This project is built for educational purposes and implements several best practices:
 1.  **Throttling**: Randomized delays to ensure respectful request volume.
 2.  **User-Agent Rotation**: Simulates diverse browser environments.
 3.  **Proxying**: Uses ScraperAPI to ensure stability and bypass aggressive bot detection while adhering to reasonable usage limits.
 
-## 📝 Limitations
+## Limitations
 - Requires a valid ScraperAPI key for live scraping.
 - LLM outputs depend on the quality and specificity of the user-provided reviews.
