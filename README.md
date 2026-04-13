@@ -1,71 +1,76 @@
-# AI Engineer Intern — Assignment 2: Review Analyzer
+# Flipkart Review Analyzer & Sentiment Engine 🚀
 
-A Python-based application that scrapes product reviews from Flipkart, cleans and chunks them for LLM processing, and generates sentiment/summary analysis using an OpenAI-compatible API.
+A high-performance Python application designed to scrape, preprocess, and analyze e-commerce product reviews. This system uses a sophisticated **multi-layer heuristic scraper** to bypass dynamic DOM structures and leverages **Groq-powered LLMs** to generate sentimental analysis and final product verdicts.
 
-## Chosen Product URL
-- **Product:** HP 320 5MP HD Webcam
-- **URL:** [Flipkart Product Page](https://www.flipkart.com/hp-320-5-mp-hd-webcam-usb-connectivity/p/itm00644a314bab0?pid=ACCH28H2F69RKYQZ)
-- **Why:** High-volume consumer electronics with diverse customer reviews, ideal for testing sentiment analysis and summarization.
+## ✨ Key Features
 
-## Setup Instructions
+- **Layered Heuristic Scraper**: Robust parsing logic using CSS selectors and a unique **Sequence-Aware Walker** to handle fragmented React layouts.
+- **Bypass Bot Detection**: Integrated with **ScraperAPI** for proxy rotation and automated browser rendering.
+- **LLM Intelligence**: Powered by OpenAI-compatible APIs (Groq/OpenAI) to generate concise summaries and sentiment classifications.
+- **Automatic Final Verdict**: Aggregates all scraped reviews to provide a high-level recommendation (Strengths, Weaknesses, and Recommendation status).
+- **Token-Aware Chunking**: Efficiently handles long reviews by chunking text based on token counts to stay within model limits.
 
-1.  **Clone the Repository**
-2.  **Activate Virtual Environment** (e.g., `conda activate asg2_env`)
-3.  **Install Dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **Configure Environment Variables**
-    Copy `.env.example` to `.env` and fill in your OpenAI-compatible API key.
-    ```bash
-    copy .env.example .env
-    ```
+---
 
-## How to Run
+## 🛠️ Setup Instructions
 
-Execute the pipeline using `main.py`:
-
+### 1. Environment Configuration
+Clone the repository and install the dependencies:
 ```bash
-python main.py --url "https://www.flipkart.com/hp-320-5-mp-hd-webcam-usb-connectivity/p/itm00644a314bab0?pid=ACCH28H2F69RKYQZ" --max-reviews 10
+conda activate asg2_env
+pip install -r requirements.txt
 ```
 
-### CLI Arguments
+### 2. Configure API Keys
+Create a `.env` file in the root directory (or update the existing one):
+```env
+# LLM Configuration
+OPENAI_API_KEY=your_groq_or_openai_key
+BASE_URL=https://api.groq.com/openai/v1  # Example for Groq
+MODEL=llama3-70b-8192
 
+# Scraping Configuration
+SCRAPER_API_KEY=your_scraper_api_key
+REQUEST_DELAY=2.0
+```
+
+---
+
+## 🚀 Usage
+
+Execute the pipeline for any Flipkart product using the CLI:
+
+```bash
+python main.py --url "https://www.flipkart.com/hp-320-5-mp-hd-webcam-usb-connectivity/p/itm00644a314bab0" --max-reviews 20
+```
+
+### CLI Options
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--url` | (Required) | The Flipkart product URL. |
-| `--max-reviews` | `10` | Maximum number of reviews to scrape. |
-| `--output-dir` | `output` | Directory for output CSV/JSON files. |
-| `--log-level` | `INFO` | Verbosity (DEBUG, INFO, WARNING, ERROR). |
+| `--url` | (Required) | The Flipkart product or review page URL. |
+| `--max-reviews` | `20` | Total number of reviews to extract. |
+| `--output-dir` | `output` | Directory where results will be saved. |
 
-## Output Files
+---
 
-After a successful run, the following files will be created in the `output/` directory:
+## 📊 Outputs
 
-- `processed_reviews.csv`: A structured CSV with columns: `author`, `date`, `rating`, `verified`, `title`, `body`, `sentiment`, `summary`, `url`.
-- `processed_reviews.json`: The same data in JSON format for easy programmatic ingestion.
-- `final_verdict.json`: A high-level LLM-generated analysis of the overall product quality, strengths, and weaknesses.
-- `run.log`: A detailed execution log for troubleshooting and verification.
+The analyzer produces structured data in the `output/` directory:
 
-## Design Choices
+- 📄 `flipkart_reviews.csv`: Tabular data with ratings, authors, and sentiment.
+- 📄 `flipkart_reviews.json`: Structured JSON for programmatic use.
+- 📄 `final_verdict.json`: The LLM-generated summary and purchase recommendation.
+- 📄 `run.log`: Detailed execution history for verification.
 
-1.  **Modular Architecture**: Isolated modules for scraping, preprocessing, LLM client, and storage to ensure testability and extensibility.
-2.  **OpenAI-Compatible Abstraction**: Uses the standard OpenAI SDK, allowing easy swapping of providers (OpenAI, Groq, Ollama) via environment variables.
-3.  **Token-Aware Chunking**: Uses `tiktoken` to split long reviews into manageable overlapping chunks to stay within model context windows and preserve context.
-4.  **Exponential Backoff**: Robust API call logic that handles rate limits (429) and server errors (5xx) with automatic retries.
-5.  **Robust Scraper**: Implements User-Agent rotation and randomized delays to minimize bot detection.
+---
 
-## Scraping Ethics & Robots.txt
+## 🛡️ Scraping Logic & Ethics
 
-This project is built with ethical data collection in mind:
+This project is built for educational purposes and implements several best practices:
+1.  **Throttling**: Randomized delays to ensure respectful request volume.
+2.  **User-Agent Rotation**: Simulates diverse browser environments.
+3.  **Proxying**: Uses ScraperAPI to ensure stability and bypass aggressive bot detection while adhering to reasonable usage limits.
 
-1.  **Robots.txt Compliance**: We acknowledge that Flipkart's `robots.txt` prohibits the crawling of specific review pagination and details pages. This application is designed for **single-page educational analysis** and should not be used for high-frequency or large-scale scraping.
-2.  **Request Throttling**: The scraper includes a configurable `REQUEST_DELAY_SECONDS` (default: 2s) to ensure we do not overwhelm the host servers.
-3.  **User-Agent Rotation**: Random User-Agents are used to simulate diverse browser environments and avoid being flagged as a malicious bot.
-4.  **Limited Scope**: The tool focuses only on public customer reviews and does not attempt to access any private or protected data.
-
-## Limitations
-
-- **Bot Detection**: Retail sites like Flipkart aggressively block automated scrapers. ScraperAPI proxy helps, but CSS selectors may need updates if site layout changes.
-- **Review Content**: Currently focuses on text-based reviews. media/images and Q&A sections are excluded.
-- **API Costs**: Each review analyzed incurs token costs from your LLM provider.
+## 📝 Limitations
+- Requires a valid ScraperAPI key for live scraping.
+- LLM outputs depend on the quality and specificity of the user-provided reviews.
