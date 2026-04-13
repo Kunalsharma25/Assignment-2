@@ -1,3 +1,4 @@
+import sys
 import argparse
 import logging
 import os
@@ -89,7 +90,6 @@ def main():
         
         # Save final verdict to file
         if final_verdict:
-            import json
             verdict_path = os.path.join(args.output_dir, "final_verdict.json")
             with open(verdict_path, 'w', encoding='utf-8') as f:
                 json.dump(final_verdict, f, ensure_ascii=False, indent=2)

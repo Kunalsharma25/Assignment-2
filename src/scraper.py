@@ -20,18 +20,16 @@ logger = logging.getLogger(__name__)
 class Review:
     """
     Represents a single scraped review.
-    
-    Attributes:
-        author (str): The name of the review author.
-        rating (float): The star rating given by the user (usually 1.0 to 5.0).
-        date (str): The formatted date of the review (YYYY-MM-DD).
-        title (str): Short summary/title of the review.
-        body (str): The full text of the review.
-        verified (bool): Whether the purchase was verified by the platform.
-        url (str): The URL where the review was found.
-        summary (str): LLM-generated summary of the review.
-        sentiment (str): LLM-generated sentiment (Positive/Negative/Neutral).
     """
+    author: str
+    rating: Optional[float]
+    date: str
+    title: str
+    body: str
+    verified: bool
+    url: str
+    summary: Optional[str] = None
+    sentiment: Optional[str] = None
 
 class FlipkartScraper:
     def __init__(self, api_key: Optional[str] = None, delay: float = 2.0):
@@ -99,6 +97,18 @@ class FlipkartScraper:
         for attempt in range(3):
             try:
                 response = self.session.get(proxy_url, headers=headers, timeout=90)
+                
+                if response.status_code == 401:
+                    logger.error("SCRAPER_API_KEY is invalid or unauthorized (401). Please check your .env file.")
+                    return None
+                if response.status_code == 403:
+                    logger.error("SCRAPER_API_KEY has no credits or is blocked (403).")
+                    return None
+                if response.status_code == 429:
+                    logger.warning("ScraperAPI rate limit reached (429). Retrying after delay...")
+                    time.sleep(self.delay * 2)
+                    continue
+
                 response.raise_for_status()
                 return BeautifulSoup(response.content, "lxml")
             except Exception as e:
@@ -108,144 +118,134 @@ class FlipkartScraper:
                 raise
 
     def _parse_reviews(self, soup: BeautifulSoup, page_url: str) -> List[Review]:
+        """
+        Parses review data from the provided soup object using a tiered heuristic approach:
+        1. Explicit Selector Layer: Targets specific known Flipkart CSS classes.
+        2. Sequence-Aware Walker: Identifies metadata (Author, Date, Verification) by analyzing 
+           textual sequences relative to the 'Verified Purchase' badge.
+        """
         reviews = []
-        # Try new Flipkart structure (2024+) - reviews are in larger containers
-        containers = soup.select("div.lQLKCP, div.yiQOTv, div[class*='asbjxx'], div.r-w7s2jr")
         
-        if not containers:
-            # Fallback: Look for "Verified Purchase" text and find parent review containers
-            verified_tags = soup.find_all(string=re.compile("Verified Purchase", re.I))
-            containers = []
-            for tag in verified_tags:
-                # Walk up to find a reasonable-sized container with review content
+        # --- LAYER 1: Explicit Selector Layer (Fastest) ---
+        # Look for known review containers (2024-2025 structures)
+        selectors = [
+            "div.lQLKCP", "div.yiQOTv", "div.r-w7s2jr", "div.col._2wYq0G", 
+            "div[class*='asbjxx']", "div.EKm096", "div.row._3879fbc", "div.css-g5y9jx.r-w7s2jr"
+        ]
+        containers = soup.select(", ".join(selectors))
+        logger.debug(f"Layer 1: Found {len(containers)} containers via selectors.")
+        
+        # --- LAYER 2: Keyword-based Walker Layer (Robustness) ---
+        if len(containers) < 3:
+            # Look for "Verified Purchase" or "Certified Buyer" tags
+            identity_tags = soup.find_all(string=re.compile(r"Verified Purchase|Certified Buyer", re.I))
+            logger.debug(f"Layer 2: Found {len(identity_tags)} identity tags.")
+            new_containers = []
+            for tag in identity_tags:
+                # Walk up to find a container with a reasonable length
                 current = tag.parent
-                for _ in range(20):
-                    if current is None:
-                        break
-                    text_len = len(current.get_text(strip=True))
-                    if 100 < text_len < 5000:  # Likely a review container
-                        if current not in containers:
-                            containers.append(current)
+                for _ in range(15):
+                    if current is None: break
+                    t = current.get_text(strip=True)
+                    # Review blocks are usually 150-3000 chars in this structure
+                    if 150 < len(t) < 3000:
+                        if current not in new_containers:
+                            new_containers.append(current)
                         break
                     current = current.parent
-
-        # If we have a large container (new Flipkart structure), split into individual reviews
-        if containers and len(containers) == 1:
-            large_container = containers[0]
-            container_text = large_container.get_text()
             
-            # Split by rating patterns: "X.X•Title"
-            # Find all review starts
-            review_starts = []
-            for match in re.finditer(r'(\d+(?:\.\d)?)\s*•\s*([^•\n]+)', container_text):
-                review_starts.append({
-                    'rating': float(match.group(1)),
-                    'title': match.group(2).strip(),
-                    'start': match.start(),
-                    'end': match.end()
-                })
-            
-            for idx, review_start in enumerate(review_starts):
-                try:
-                    rating = review_start['rating']
-                    title = review_start['title']
-                    
-                    # Extract text from this review until the next review
-                    current_pos = review_start['end']
-                    next_pos = review_starts[idx + 1]['start'] if idx + 1 < len(review_starts) else len(container_text)
-                    review_block = container_text[current_pos:next_pos]
-                    
-                    # Remove review-meta stuff and extract body
-                    lines = review_block.split('\n')
-                    body_lines = []
-                    author = "Anonymous"
-                    date_raw = "Unknown"
-                    verified = False
-                    
-                    for line in lines:
-                        line = line.strip()
-                        if not line or line == "more":
-                            continue
-                        
-                        # Extract author name (usually one line with name and location)
-                        if ',' in line and any(keyword in line for keyword in ['Kumar', 'Singh', 'Sharma', 'Patel', 'Khan', 'Customer', 'Verma', 'Sharma', 'Ray']):
-                            author = line.split(',')[0].strip()
-                            continue
-                        
-                        # Check for verification badge
-                        if 'Verified Purchase' in line:
-                            verified = True
-                            # Extract date from same line or next meaningful chunk
-                            date_match = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|ago|month|day|year)[^·]*$', line)
-                            if date_match:
-                                date_raw = date_match.group(0).strip()
-                            continue
-                        
-                        # Exclude metadata lines
-                        if any(kw in line for kw in ['Helpful for', 'Rating', 'Review for:', 'Color Black', 'Image Resolution', 'MP']):
-                            if 'Helpful for' in line or 'Rating' in line:
-                                continue
-                        
-                        # Accumulate body text
-                        if len(line) > 5 and not line.startswith('Review for:'):
-                            body_lines.append(line)
-                    
-                    # Construct body from accumulated lines
-                    body = ' '.join(body_lines[:8]).strip()  # Limit to first 8 lines to avoid excessive text
-                    if not body or len(body) < 10:
-                        body = title
-                    
-                    formatted_date = self._parse_date(date_raw)
-                    
-                    if body and len(body) > 5:
-                        reviews.append(Review(author, rating, formatted_date, title, body, verified, page_url))
-                        
-                except Exception as e:
-                    logger.debug(f"Error parsing individual review: {e}")
-                    continue
-        else:
-            # Fallback: Parse individual containers (old structure or edge cases)
-            for c in containers:
-                try:
-                    # 1. Try to extract rating - look for patterns like "5.0•" 
-                    rating = None
-                    container_text = c.get_text()
-                    
-                    # Look for star patterns (e.g., 5.0★ or 5 stars)
-                    rating_match = re.search(r'([1-5](?:\.\d)?)\s*(?:★|⭐|stars|out of 5)', container_text, re.I)
-                    if not rating_match:
-                        # Match 1/5, 5/5 etc but avoid large numbers like 100/
-                        rating_match = re.search(r'\b([1-5])\s*\/\s*5\b', container_text)
-                    
-                    if rating_match:
-                        rating = float(rating_match.group(1))
-                    
-                    # 2. Extract title, body, author, date from text
-                    lines = [l.strip() for l in container_text.split('\n') if l.strip()]
-                    
-                    title = lines[0] if lines else ""
-                    body = ' '.join(lines[1:4]) if len(lines) > 1 else ""
-                    author = "Anonymous"
-                    date_raw = "Unknown"
-                    verified = "Verified Purchase" in container_text
-                    
-                    # Find author and date in text
-                    for line in lines[-5:]:  # Check last 5 lines
-                        if any(keyword in line for keyword in ['Kumar', 'Singh', 'Sharma', 'Patel', 'Khan', 'Customer']):
-                            author = line.split(',')[0].strip()
-                        if any(month in line for month in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                                                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'ago', 'months']):
-                            date_raw = line
-                    
-                    formatted_date = self._parse_date(date_raw)
-                    
-                    if body and len(body) > 5:
-                        reviews.append(Review(author, rating, formatted_date, title, body, verified, page_url))
-                        
-                except Exception as e:
-                    logger.debug(f"Error parsing container: {e}")
-                    continue
+            if len(new_containers) > len(containers):
+                logger.debug(f"Layer 2: Upgraded to {len(new_containers)} containers via walking.")
+                containers = new_containers
         
+        # --- LAYER 3: Parsing Found Containers ---
+        logger.info(f"Parsing {len(containers)} potential review containers.")
+        
+        for c in containers:
+            try:
+                # 1. Extract All Text Pieces in Sequence
+                # This is the most robust way to handle React's fragmented structure
+                pieces = [p.strip() for p in c.get_text("\n").split("\n") if p.strip()]
+                if not pieces: continue
+                full_text_joined = " ".join(pieces)
+
+                # 2. Extract Rating
+                rating = None
+                # Method A: Search for star pattern (e.g. 5★)
+                rating_match = re.search(r'([1-5](?:\.\d)?)\s*(?:★|⭐|stars|out of 5)', full_text_joined, re.I)
+                if rating_match:
+                    rating = float(rating_match.group(1))
+                else:
+                    # Method B: Search for standalone digit line (1-5)
+                    for p in pieces[:5]:
+                        if re.match(r'^[1-5]$', p):
+                            rating = float(p)
+                            break
+                    
+                    if not rating:
+                        # Method C: Find color-coded rating label classes
+                        labels = c.find_all(class_=re.compile(r"_3LWZlK|_1738d9f|rating|r-1h7g6bg", re.I))
+                        for label in labels:
+                            label_match = re.search(r'^([1-5](\.\d)?)$', label.get_text().strip())
+                            if label_match:
+                                rating = float(label_match.group(1))
+                                break
+
+                # 3. Sequence-Aware Metadata Extraction (Author, Date, Verified)
+                author = "Anonymous"
+                date_raw = "Unknown"
+                verified = any("Verified" in p or "Certified Buyer" in p for p in pieces)
+                
+                # Find the index of the verification badge
+                v_idx = -1
+                for i, p in enumerate(pieces):
+                    if "Verified Purchase" in p or "Certified Buyer" in p:
+                        v_idx = i
+                        break
+                
+                if v_idx != -1:
+                    # The author is usually 1-3 positions before the badge
+                    # Pattern: [Name] [,] [Location] [Count] [Count] [Verified]
+                    # We look for the first piece that isn't a comma or numbers
+                    for i in range(max(0, v_idx - 5), v_idx):
+                        if (i + 1 < len(pieces) and pieces[i+1].startswith(',')) or pieces[i].startswith(','):
+                             # This is likely the author piece (the one before the comma)
+                             author_cand = pieces[i] if not pieces[i].startswith(',') else pieces[max(0,i-1)]
+                             if len(author_cand) > 2 and not any(kw in author_cand for kw in ['Verified', 'Certified', 'Buyer']):
+                                 author = author_cand
+                                 break
+                    
+                    # Date is usually immediately AFTER the badge or in the same piece
+                    for i in range(v_idx, min(len(pieces), v_idx + 3)):
+                        if any(m in pieces[i] for m in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'ago']):
+                            date_raw = pieces[i]
+                            break
+                
+                # 4. Extract Title & Body
+                title = pieces[0]
+                # If title is just a rating number, shift to next
+                if re.match(r'^[1-5]$', title) and len(pieces) > 1:
+                    title = pieces[1]
+                
+                # Filter out summary blocks (e.g. "659 ratings and 86 reviews")
+                if "ratings" in title.lower() and "reviews" in title.lower():
+                    continue
+                if "sorted by" in title.lower():
+                    continue
+                
+                # Body is usually the longest piece that isn't metadata
+                body_candidates = [p for p in pieces if len(p) > 20 and p != title and "Review for:" not in p]
+                body = max(body_candidates, key=len) if body_candidates else title
+
+                formatted_date = self._parse_date(date_raw)
+                
+                if body and len(body) > 10:
+                    reviews.append(Review(author, rating, formatted_date, title, body, verified, page_url))
+                
+            except Exception as e:
+                logger.debug(f"Error parsing container: {e}")
+                continue
+                
         return reviews
 
     def _normalize_url(self, url: str) -> str:
@@ -278,11 +278,4 @@ class FlipkartScraper:
             if len(all_reviews) >= max_reviews: break
             time.sleep(self.delay)
         
-        # DEMO FALLBACK: If no reviews found on live site, try reading from local file
-        if not all_reviews and os.path.exists("revs.html"):
-            logger.info("No reviews found on live site. Falling back to local 'revs.html' for demonstration.")
-            with open("revs.html", "r", encoding="utf-8") as f:
-                soup = BeautifulSoup(f, "lxml")
-                all_reviews = self._parse_reviews(soup, "file://revs.html")[:max_reviews]
-            
         return all_reviews
