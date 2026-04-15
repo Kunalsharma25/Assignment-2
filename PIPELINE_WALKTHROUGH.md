@@ -48,15 +48,6 @@ The scraper doesn't just look for classes (which change frequently). It uses a *
 4.  **Final Verdict**: After all reviews are processed, the LLM generates a "Final Verdict" JSON (Product Strengths, Weaknesses, and Verdict).
 5.  **Storage**: Metadata and analysis are saved to `output/flipkart_reviews.csv` and `output/flipkart_reviews.json`.
 
----
-
-## 📽️ Video Presentation Script (Suggested)
-
-- **[0:00] Intro**: "Hi, I'm [Name]. I built a robust review analyzer that handles Flipkart's complex dynamic layouts."
-- **[0:45] Run**: "Notice the validation phase—it ensures API keys are ready before starting."
-- **[1:30] Scraping**: "Even if Flipkart changes their HTML tomorrow, my 'Badge Walking' logic will still find the reviews."
-- **[3:00] Analysis**: "We're using Groq to analyze sentiment in near real-time. It handles rate limits automatically."
-- **[4:30] Conclusion**: "The result is structured data and an automated buying recommendation."
 
 ---
 
